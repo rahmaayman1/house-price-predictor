@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏠 House Price Prediction</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #353f6a 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            transform: none;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+        }
+        
+        .result.success {
+            background: linear-gradient(135deg, #3c63b0 0%, #6074c5 100%);
+            color: white;
+        }
+        
+        .result.error {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            color: #d63031;
+        }
+        
+        .price {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+        
+        .summary {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+        
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+        }
+        
+        .tooltip:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏠 House Price Prediction</h1>
+        
+        <form id="predictionForm">
+            <div class="form-group">
+                <label for="bedrooms">Number of Bedrooms 🛏️</label>
+                <input type="number" id="bedrooms" name="bedrooms" min="1" max="10" value="3" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="bathrooms">Number of Bathrooms 🚿</label>
+                <input type="number" id="bathrooms" name="bathrooms" min="1" max="10" value="2" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="sqft_living">Living Area (Square Feet) 📐</label>
+                <input type="number" id="sqft_living" name="sqft_living" min="500" max="10000" value="2000" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="year_built">Year Built 📅</label>
+                <input type="number" id="year_built" name="year_built" min="1900" max="2024" value="2000" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="grade" class="tooltip" data-tooltip="Construction and design quality (1-13, where 7 is average)">Construction Grade ⭐</label>
+                <select id="grade" name="grade" required>
+                    <option value="3">Poor (3)</option>
+                    <option value="5">Below Average (5)</option>
+                    <option value="7" selected>Average (7)</option>
+                    <option value="9">Good (9)</option>
+                    <option value="11">Excellent (11)</option>
+                    <option value="13">Luxury (13)</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn" id="submitBtn">
+                Predict House Price 
+            </button>
+        </form>
+        
+        <div id="result" class="result">
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const resultDiv = document.getElementById('result');
+            const resultContent = document.getElementById('resultContent');
+            
+            // Change button state
+            submitBtn.innerHTML = '<span class="loading"></span> Calculating...';
+            submitBtn.disabled = true;
+            resultDiv.style.display = 'none';
+            
+            try {
+                // Collect form data
+                const formData = new FormData(this);
+                const data = Object.fromEntries(formData);
+                
+                // Send request
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultContent.innerHTML = `
+                        <h3> Predicted Price</h3>
+                        <div class="price">${result.predicted_price}</div>
+                        <div class="summary">
+                            <strong>Property Summary:</strong><br>
+                            ${result.input_summary.bedrooms} bedrooms • 
+                            ${result.input_summary.bathrooms} bathrooms • 
+                            ${result.input_summary.sqft_living} sqft • 
+                            ${result.input_summary.house_age} years old
+                        </div>
+                    `;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultContent.innerHTML = `
+                        <h3>❌ Error</h3>
+                        <p>${result.error}</p>
+                    `;
+                    resultDiv.className = 'result error';
+                }
+                
+                resultDiv.style.display = 'block';
+                
+            } catch (error) {
+                resultContent.innerHTML = `
+                    <h3>❌ Connection Error</h3>
+                    <p>Unable to connect to server. Make sure the application is running.</p>
+                `;
+                resultDiv.className = 'result error';
+                resultDiv.style.display = 'block';
+            }
+            
+            submitBtn.innerHTML = 'Predict House Price 💰';
+            submitBtn.disabled = false;
+        });
+    </script>
+</body>
+</html>
